@@ -31,11 +31,40 @@ class VantageInfusion {
 	 * firmware) must be configured without encryption or password protection. Support to SSL
 	 * and password protected connection will be introduced in the future, the IoT world is
 	 * a bad place! 
+	 *
+	 * Accessing the Fusion Controller
+	 * Config Port: 2001
+	 * Control Port: 3001
+	 *
+	 * Access is gained via TELNET
+	 * Command Struture found by typing HELP
+	 *
+	 * Communication structure
+	 *	Commands are typed and sent by pressing return - ie. LOAD 54 95
+	 *	Unit responds with confirmation of what happened - ie R:LOAD 54 95.000
+	 *		Note for a response it always starts with R:
+	 *
+	 * LOAD <vid> <level 0-100> - allows you to set the power level of that load from 0-100
+	 * RAMPLOAD <vid> <level 0-100> <seconds> - allows you to set the power level of that load from 0-100 over a specified time
+	 * GETLOAD <vid> - obtains systems current power level
+	 *
+	 * TASK <vid> <event type> - lets you run a predefined task in the system
+	 *	Event Types - PRESS - equivalent to pressing a button
+	 *
+	 * STATUS <event type> - turns on a mechanism to monitor inputs to the system
+	 *	BTN - when enabled every button press and release will be reported as
+	 *		S:BTN 58 PRESS
+	 *		S:BTN 58 RELEASE
+	 *	NONE - turns off any set monitors during the current session
+	 *
+	 * INVOKE <vid> - Lets you invoke the system to do something, seems to have a rich dataset.
+	 *	Object.Load
 	 */
+
 	StartCommand() {
 		this.command = net.connect({ host: this.ipaddress, port: 3001 }, () => {
 			this.command.on('data', (data) => {
-				/* Data received */
+				/* Data received from InFusion Controller */
 				var lines = data.toString().split('\n');
 				for (var i = 0; i < lines.length; i++) {
 					var dataItem = lines[i].split(" ");
@@ -78,8 +107,13 @@ class VantageInfusion {
 	 * @return true, false or a promise!
 	 */
 	isInterfaceSupported(item, interfaceName) {
+		/** Export interfaces... because that is useful for debugging!
+		 * fs.writeFileSync("/tmp/interfaces_deux.dc", JSON.stringify(this.interfaces)); 
+		 */
+
 		if (this.interfaces[interfaceName] === undefined) {
 			return new Promise((resolve, reject) => {
+				/* had to override here... suspect my Vantage system is configured differently */
 				resolve({'item': item, 'interface': interfaceName, 'support':false});
 			});
 		} else {
@@ -89,17 +123,19 @@ class VantageInfusion {
 			 *    IN| R:INVOKE 2774 0 Object.IsInterfaceSupported 32
 			 */
 			var interfaceId = this.interfaces[interfaceName];
-			
+
 			return new Promise((resolve, reject) => {
 				this.once(sprintf("isInterfaceSupportedAnswer-%d-%d",parseInt(item.VID),parseInt(interfaceId)), (_support) => {
 					resolve({'item': item, 'interface': interfaceName, 'support':_support});
 				}
 				);
+
 				sleep.usleep(5000);
-				this.command.write(sprintf("INVOKE %s Object.IsInterfaceSupported %s\n", item.VID,interfaceId));
+				this.command.write(sprintf("INVOKE %s Object.IsInterfaceSupported %s\n", item.VID, interfaceId));
 			});
 		}
 	}	
+
 
 	/**
 	 * Start the discovery procedure that use the local cache or download from the InFusion controller
@@ -127,8 +163,14 @@ class VantageInfusion {
 				var parsed = JSON.parse(parser.toJson(buffer));
 				if (parsed.IIntrospection !== undefined) {
 					var interfaces = parsed.IIntrospection.GetInterfaces.return.Interface;
+					/* Export interfaces information, useful for debugging the configuration */
+					fs.writeFileSync("/tmp/interfaces.dc", JSON.stringify(interfaces)); 
 					for (var i = 0; i < interfaces.length; i++) {
 						this.interfaces[interfaces[i].Name] = interfaces[i].IID;
+					/** 
+					 * Export interfaces information again, useful for debugging the configuration
+					 * fs.writeFileSync("/tmp/interfaces_deux.dc", JSON.stringify(interfaces)); 
+					 */
 					}
 				}
 				if (parsed.IBackup !== undefined) {
@@ -245,6 +287,10 @@ class VantagePlatform {
 		this.infusion.on('endDownloadConfiguration', (configuration) => {
 			this.log.debug("VantagePlatform for InFusion Controller (end configuration download)");
 			var parsed = JSON.parse(parser.toJson(configuration));
+			/* fs.writeFileSync("/tmp/vantage_parsed.dc", configuration); /* Write out configuation file to be parsed */
+			/* this.log(sprintf("Parse: %s", parsed)); /* Write out parsed data ... we aren't getting data  */
+			/* console.log(util.inspect(parsed, false, null)) /* Write out parsed data */ 
+			
 			for (var i = 0; i < parsed.Project.Objects.Object.length; i++) {
 				var thisItemKey = Object.keys(parsed.Project.Objects.Object[i])[0];
 				var thisItem = parsed.Project.Objects.Object[i][thisItemKey];
@@ -266,18 +312,31 @@ class VantagePlatform {
 						});
 
 					}
-					if (thisItem.DeviceCategory == "Lighting") {
+					/* Originally set as DeviceCategory == "Lighting" - but thats not how our system is configured */
+					/* Our system identifies each load (lighting circuit) under Invandescent */
+					if (thisItem.LoadType == "Incandescent") { /*  */
 						if (thisItem.DName !== undefined && thisItem.DName != "") thisItem.Name = thisItem.DName;
 						this.pendingrequests = this.pendingrequests + 1;
 						this.log(sprintf("New load asked (VID=%s, Name=%s, ---)", thisItem.VID, thisItem.Name));
-						this.infusion.isInterfaceSupported(thisItem,"Load").then((_response) => {
-							if (_response.support) {
+						/* console.log(util.inspect(thisItem, false, null)) /* Write out thisItem data */ 
+						this.infusion.isInterfaceSupported(thisItem,"Load").then((_response) => { /* asked isInterfaceSupported  */
+							/* Added ! to override the isInterfaceSupported function as it doesn't work with my Vantage setup right now */
+							if (!_response.support) { 
 								if (_response.item.PowerProfile !== undefined) {
 									/* Check if it is a Dimmer or a RGB Load */
 									this.infusion.isInterfaceSupported(_response.item,"RGBLoad").then((_response) => {
 										if (_response.support) {
 											this.log.debug(sprintf("New load added (VID=%s, Name=%s, RGB)", _response.item.Name, _response.item.VID));
 											this.items.push(new VantageLoad(this.log, this, _response.item.Name, _response.item.VID, "rgb"));
+											/**
+											 * Need to clean the below code up!
+											 * Forces VID loads 244, 237 and 238 in my system to be treated as relays - 
+											 * prevents the system from trying to dim non-dimmable loads 
+											 * and blowing a fuse on the Vantage Load Center... not fun to fix...
+											 */
+										} else if (_response.item.VID == 244 || _response.item.VID == 237 || _response.item.VID == 238) {
+											this.log.debug(sprintf("New load added (VID=%s, Name=%s, RELAY)", _response.item.Name, _response.item.VID));
+											this.items.push(new VantageLoad(this.log, this, _response.item.Name, _response.item.VID, "relay"));
 										} else {
 											this.log.debug(sprintf("New load added (VID=%s, Name=%s, DIMMER)", _response.item.Name, _response.item.VID));
 											this.items.push(new VantageLoad(this.log, this, _response.item.Name, _response.item.VID, "dimmer"));
@@ -295,10 +354,14 @@ class VantagePlatform {
 								/**
 								 * This is not a valid load
 								 */
+								this.log.debug(sprintf("Problem load not added (VID=%s, Name=%s, Support=%s)", _response.item.VID, _response.item.Name, _response.support));
+								
 								this.pendingrequests = this.pendingrequests - 1;
 								this.callbackPromesedAccessoriesDo();
 							}
 						});
+
+
 					}
 				}
 			}
