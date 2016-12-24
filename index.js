@@ -75,8 +75,8 @@ class VantageInfusion {
 					}
 
 					/* Live update about button presses in Vantage system */
-					if (lines[i].startsWith("S:BTN ") && dataItem[2] == "PRESS") {
-						this.emit("buttonStatusChange", parseInt(dataItem[1]), 1);
+					if (lines[i].startsWith("S:BTN ")) {
+						this.emit("buttonStatusChange", parseInt(dataItem[1]), dataItem[2]);
 					}
 
 					
