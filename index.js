@@ -68,9 +68,15 @@ class VantageInfusion {
 				var lines = data.toString().split('\n');
 				for (var i = 0; i < lines.length; i++) {
 					var dataItem = lines[i].split(" ");
+
+					/* Live update about load level (even if it's a RGB load') */	
 					if (lines[i].startsWith("S:LOAD ") || lines[i].startsWith("R:GETLOAD ")) {
-						/* Live update about load level (even if it's a RGB load') */
-						this.emit("loadStatusChange", parseInt(dataItem[1]),parseInt(dataItem[2]));
+						this.emit("loadStatusChange", parseInt(dataItem[1]), parseInt(dataItem[2]));
+					}
+
+					/* Live update about button presses in Vantage system */
+					if (lines[i].startsWith("S:BTN ") && dataItem[2] == "PRESS") {
+						this.emit("buttonStatusChange", parseInt(dataItem[1]), 1);
 					}
 
 					
@@ -260,6 +266,11 @@ class VantagePlatform {
 			}.bind(this));
 		});
 
+		/* Interpreting button press status from StartCommand */
+		this.infusion.on('buttonStatusChange', (vid,value) => {
+
+		});
+
 		this.infusion.on('thermostatOutdoorTemperatureChange', (vid,value) => {
 			this.items.forEach(function (accessory) {
 				if (accessory.address == vid) {
@@ -312,8 +323,12 @@ class VantagePlatform {
 						});
 
 					}
-					/* Originally set as DeviceCategory == "Lighting" - but thats not how our system is configured */
-					/* Our system identifies each load (lighting circuit) under Invandescent */
+					
+					/**
+					 * Identifies lighting loads from Vantage configuration file and adds them as accessories per get services.
+					 * Originally set as DeviceCategory == "Lighting" - but thats not how our system is configured
+					 * Our system identifies each load (lighting circuit) under Incandescent 
+					 */
 					if (thisItem.LoadType == "Incandescent") { /*  */
 						if (thisItem.DName !== undefined && thisItem.DName != "") thisItem.Name = thisItem.DName;
 						this.pendingrequests = this.pendingrequests + 1;
