@@ -224,8 +224,13 @@ class VantageInfusion {
 		var thisTime = time || 1;
 		if (level > 0) {
 			this.command.write(sprintf("INVOKE %s Load.Ramp 6 %s %s\n", vid, thisTime, level));
-		} else {
+			sleep.usleep(10);
+		} else if (vid == 244 || vid == 237 || vid == 238) {
 			this.command.write(sprintf("INVOKE %s Load.SetLevel %s\n", vid, level));
+			sleep.usleep(10);
+		} else if (level == 0) {
+			this.command.write(sprintf("INVOKE %s Load.Ramp 6 %s %s\n", vid, thisTime, level));
+			sleep.usleep(10);
 		}
     }
 }
@@ -507,6 +512,24 @@ class VantageLoad {
 					callback(null, this.bri);
 				});
 		}
+
+/**
+		if (this.type == "relay") {
+			this.lightBulbService.getCharacteristic(Characteristic.Brightness)
+				.on('set', (level, callback) => {
+					this.log.debug(sprintf("setBrightness %s = %d",this.address, level));
+					this.bri = parseInt(level);
+					this.power = (this.bri > 0);
+					this.parent.infusion.Load_Dim(this.address, this.power * this.bri);
+					callback(null);
+				})
+				.on('get', (callback) => {
+					this.log(sprintf("RELAY"));
+					this.log(sprintf("getBrightness %s = %d",this.address, this.bri));
+					callback(null, this.bri);
+				});
+		}
+**/
 
 		if (this.type == "rgb") {
 			this.lightBulbService.getCharacteristic(Characteristic.Saturation)
