@@ -97,8 +97,12 @@ class VantageInfusion {
 				}
 			});			
 
-			this.command.write(sprintf("STATUS ALL\n"));
+			/* Requests loads and buttons to be returned to system */
+			this.command.write(sprintf("STATUS LOAD\nSTATUS BTN\n"));
+
+			/* Appears to be related to logging and data output - axing this to see if it reduces load on the controller
 			this.command.write(sprintf("ELENABLE 1 AUTOMATION ON\nELENABLE 1 EVENT ON\nELENABLE 1 STATUS ON\nELENABLE 1 STATUSEX ON\nELENABLE 1 SYSTEM ON\nELLOG AUTOMATION ON\nELLOG EVENT ON\nELLOG STATUS ON\nELLOG STATUSEX ON\nELLOG SYSTEM ON\n"));
+			*/	
 		});
 	}
 
@@ -126,6 +130,7 @@ class VantageInfusion {
 			/**
 			 * Sample
 			 *   OUT| INVOKE 2774 Object.IsInterfaceSupported 32
+			 *	The number 0 indicates the returned information on this
 			 *    IN| R:INVOKE 2774 0 Object.IsInterfaceSupported 32
 			 */
 			var interfaceId = this.interfaces[interfaceName];
@@ -221,16 +226,17 @@ class VantageInfusion {
 	 */
     Load_Dim(vid, level, time) {
 		// TODO: reduce feedback (or command) rate
+		// Increased sleep time to 1000 us from 100 us to attempt to reduce command rate
 		var thisTime = time || 1;
 		if (level > 0) {
 			this.command.write(sprintf("INVOKE %s Load.Ramp 6 %s %s\n", vid, thisTime, level));
-			sleep.usleep(10);
+			sleep.usleep(1000);
 		} else if (vid == 244 || vid == 237 || vid == 238) {
 			this.command.write(sprintf("INVOKE %s Load.SetLevel %s\n", vid, level));
-			sleep.usleep(10);
+			sleep.usleep(1000);
 		} else if (level == 0) {
 			this.command.write(sprintf("INVOKE %s Load.Ramp 6 %s %s\n", vid, thisTime, level));
-			sleep.usleep(10);
+			sleep.usleep(1000);
 		}
     }
 }
