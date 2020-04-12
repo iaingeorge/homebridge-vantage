@@ -340,7 +340,7 @@ class VantagePlatform {
 					 * Originally set as DeviceCategory == "Lighting" - but thats not how our system is configured
 					 * Our system identifies each load (lighting circuit) under Incandescent 
 					 */
-					if (thisItem.LoadType == "Incandescent") { /*  */
+					if (thisItem.LoadType == "Incandescent" || thisItem.LoadType == "Fluor. Electronic non-Dim") { /*  */
 						if (thisItem.DName !== undefined && thisItem.DName != "") thisItem.Name = thisItem.DName;
 						this.pendingrequests = this.pendingrequests + 1;
 						this.log(sprintf("New load asked (VID=%s, Name=%s, ---)", thisItem.VID, thisItem.Name));
@@ -356,11 +356,11 @@ class VantagePlatform {
 											this.items.push(new VantageLoad(this.log, this, _response.item.Name, _response.item.VID, "rgb"));
 											/**
 											 * Need to clean the below code up!
-											 * Forces VID loads 244, 237 and 238 in my system to be treated as relays - 
+											 * Forces VID loads 251, 244, 237 and 238 in my system to be treated as relays - 
 											 * prevents the system from trying to dim non-dimmable loads 
 											 * and blowing a fuse on the Vantage Load Center... not fun to fix...
 											 */
-										} else if (_response.item.VID == 244 || _response.item.VID == 237 || _response.item.VID == 238) {
+										} else if (_response.item.VID == 244 || _response.item.VID == 237 || _response.item.VID == 238 || _response.item.VID == 251) {
 											this.log.debug(sprintf("New load added (VID=%s, Name=%s, RELAY)", _response.item.Name, _response.item.VID));
 											this.items.push(new VantageLoad(this.log, this, _response.item.Name, _response.item.VID, "relay"));
 										} else {
