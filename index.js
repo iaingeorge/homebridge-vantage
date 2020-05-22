@@ -346,13 +346,15 @@ class VantagePlatform {
 						this.log(sprintf("New load asked (VID=%s, Name=%s, ---)", thisItem.VID, thisItem.Name));
 						/* console.log(util.inspect(thisItem, false, null)) /* Write out thisItem data */ 
 						this.infusion.isInterfaceSupported(thisItem,"Load").then((_response) => { /* asked isInterfaceSupported  */
-							/* Added ! to override the isInterfaceSupported function as it doesn't work with my Vantage setup right now */
-							if (!_response.support) { 
+							/** Added ! to override the isInterfaceSupported function as it doesn't work with my Vantage setup right now *
+							 * With the latest controller this apparently works again, removed the ! - May 19, 2020 */
+							if (_response.support == 1) { 
+								// this.log(sprintf("Got past response support! %s", _response.support));
 								if (_response.item.PowerProfile !== undefined) {
 									/* Check if it is a Dimmer or a RGB Load */
 									this.infusion.isInterfaceSupported(_response.item,"RGBLoad").then((_response) => {
 										if (_response.support) {
-											this.log.debug(sprintf("New load added (VID=%s, Name=%s, RGB)", _response.item.Name, _response.item.VID));
+											this.log(sprintf("New load added (VID=%s, Name=%s, RGB)", _response.item.Name, _response.item.VID));
 											this.items.push(new VantageLoad(this.log, this, _response.item.Name, _response.item.VID, "rgb"));
 											/**
 											 * Need to clean the below code up!
@@ -380,7 +382,7 @@ class VantagePlatform {
 								/**
 								 * This is not a valid load
 								 */
-								this.log.debug(sprintf("Problem load not added (VID=%s, Name=%s, Support=%s)", _response.item.VID, _response.item.Name, _response.support));
+								this.log(sprintf("Problem load not added (VID=%s, Name=%s, Support=%s)", _response.item.VID, _response.item.Name, _response.support));
 								
 								this.pendingrequests = this.pendingrequests - 1;
 								this.callbackPromesedAccessoriesDo();
