@@ -1,6 +1,6 @@
 {
-  "name": "homebridge-vantage",
-  "version": "0.0.7",
+  "name": "homebridge-vantage-testing",
+  "version": "0.0.12",
   "description": "VantageControls InFusion plugin for homebridge: https://github.com/nfarina/homebridge",
   "license": "MIT",
   "keywords": [
