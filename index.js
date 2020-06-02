@@ -348,7 +348,7 @@ class VantagePlatform {
 						this.infusion.isInterfaceSupported(thisItem,"Load").then((_response) => { /* asked isInterfaceSupported  */
 							/** Added ! to override the isInterfaceSupported function as it doesn't work with my Vantage setup right now *
 							 * With the latest controller this apparently works again, removed the ! - May 19, 2020 */
-							if (_response.support == 1) { 
+							if (_response.support == 1 || _response.support == 0) { 
 								// this.log(sprintf("Got past response support! %s", _response.support));
 								if (_response.item.PowerProfile !== undefined) {
 									/* Check if it is a Dimmer or a RGB Load */
